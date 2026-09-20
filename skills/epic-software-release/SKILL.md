@@ -35,6 +35,10 @@ Example: on 2026-08-11, latest release `v1.39.2` (2026-07-17) is from the previo
 
 Record this as `EICRECON_VERSION` (with `v`) and `EICRECON_VERSION_NO_V` (without `v`, used by spack).
 
+Also record the branch the release will be tagged from as `EICRECON_BRANCH`:
+- **Minor** bump → the default branch `main`.
+- **Patch** bump → the existing stable branch `vX.Y` (e.g. `v1.39`).
+
 ### 2. Determine the next epic (geometry) version
 
 ```bash
@@ -50,6 +54,10 @@ Example: on 2026-08-11, latest `26.07.2` → next version **`26.08.0`**.
 
 Record this as `EPIC_VERSION`.
 
+Also record the branch the release will be tagged from as `EPIC_BRANCH`:
+- **New month** (`.0`) → the default branch `main`.
+- **Patch** bump → the existing stable branch `YY.MM` (e.g. `26.07`).
+
 ### 3. Determine the software stack (containers) stable version
 
 The containers stable release follows CalVer with a `v` prefix and `-stable` suffix (see step 18):
@@ -64,15 +72,15 @@ The `YY.MM` normally matches the epic (geometry) release month. Record this as `
 Present all three determined versions together and **stop for explicit user confirmation** before creating any release, branch, or PR:
 
 ```
-Planned release versions:
+Planned release versions (tagged from branch):
 - epic software stack (containers): <STACK_VERSION>
-- geometry (eic/epic):              <EPIC_VERSION>
-- EICrecon (eic/EICrecon):          <EICRECON_VERSION>
+- geometry (eic/epic):              <EPIC_VERSION>    from <EPIC_BRANCH>
+- EICrecon (eic/EICrecon):          <EICRECON_VERSION> from <EICRECON_BRANCH>
 
-Confirm you are okay releasing these versions before I proceed.
+Confirm you are okay releasing these versions from these branches before I proceed.
 ```
 
-Do not create any release, branch, or PR until the user confirms. If the user wants different versions, update the recorded values and re-confirm.
+Do not create any release, branch, or PR until the user confirms. If the user wants different versions or branches, update the recorded values and re-confirm.
 
 ### 5. Create the EICrecon release with auto-generated notes
 
@@ -81,6 +89,7 @@ Use `gh` to tag and publish the release; let GitHub generate the release notes f
 ```bash
 gh release create <EICRECON_VERSION> \
     --repo eic/EICrecon \
+    --target <EICRECON_BRANCH> \
     --title <EICRECON_VERSION> \
     --generate-notes
 ```
@@ -88,7 +97,7 @@ gh release create <EICRECON_VERSION> \
 Example:
 
 ```bash
-gh release create v1.40.0 --repo eic/EICrecon --title v1.40.0 --generate-notes
+gh release create v1.40.0 --repo eic/EICrecon --target main --title v1.40.0 --generate-notes
 ```
 
 ### 6. Verify the generated release notes
@@ -120,7 +129,7 @@ gh release edit <EICRECON_VERSION> --repo eic/EICrecon --notes-file /tmp/notes.n
 Same procedure as EICrecon (steps 5–7), just with `--repo eic/epic` and `<EPIC_VERSION>`:
 
 ```bash
-gh release create <EPIC_VERSION> --repo eic/epic --title <EPIC_VERSION> --generate-notes
+gh release create <EPIC_VERSION> --repo eic/epic --target <EPIC_BRANCH> --title <EPIC_VERSION> --generate-notes
 
 gh release view <EPIC_VERSION> --repo eic/epic --json body -q .body > /tmp/epic-notes.md
 grep -vE '^\* \[pre-commit\.ci\]|@dependabot' /tmp/epic-notes.md > /tmp/epic-notes.new.md
