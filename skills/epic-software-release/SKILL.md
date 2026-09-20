@@ -94,7 +94,7 @@ gh release create <EICRECON_VERSION> \
     --generate-notes
 ```
 
-Example:
+Example (minor bump `v1.40.0`, so `EICRECON_BRANCH` is `main`; a patch would use the stable branch `vX.Y` instead):
 
 ```bash
 gh release create v1.40.0 --repo eic/EICrecon --target main --title v1.40.0 --generate-notes
