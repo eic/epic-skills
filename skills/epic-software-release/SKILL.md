@@ -58,6 +58,8 @@ Also record the branch the release will be tagged from as `EPIC_BRANCH`:
 - **New month** (`.0`) → the default branch `main`.
 - **Patch** bump → the existing stable branch `YY.MM` (e.g. `26.07`).
 
+**Every container release requires a matching epic tag to exist**, even if the `eic/epic` repository has no changes since the last release. The containers CI verifies that the geometry for the pinned tag is available.
+
 ### 3. Determine the software stack (containers) stable version
 
 The containers stable release follows CalVer with a `v` prefix and `-stable` suffix (see step 18):
