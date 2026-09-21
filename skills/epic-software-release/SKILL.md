@@ -18,7 +18,7 @@ Do not chain these actions without an intervening confirmation.
 
 ## Steps
 
-### 1. Determine the latest EICrecon release
+### 1. Determine the next EICrecon version
 
 List recent releases and identify the latest tag:
 
@@ -26,59 +26,20 @@ List recent releases and identify the latest tag:
 gh release list --repo eic/EICrecon --limit 10
 ```
 
-The latest release is the one marked `Latest` in the second column. Note its version (e.g. `v1.39.2`) — subsequent steps use this to decide the next version number.
-
-### 2. Decide patch vs. minor bump
-
-Compare the latest release date to today (`date`):
+The latest release is the one marked `Latest` in the second column. Compare its date to today (`date`):
 
 - If the latest release is in the **current calendar month**, the next release is typically a **patch** bump (e.g. `v1.39.2` → `v1.39.3`).
 - If the latest release is from a **previous calendar month**, the next release is typically a **minor** bump (e.g. `v1.39.2` → `v1.40.0`).
 
 Example: on 2026-08-11, latest release `v1.39.2` (2026-07-17) is from the previous month → next version is **`v1.40.0`** (minor).
 
-### 3. Create the release with auto-generated notes
+Record this as `EICRECON_VERSION` (with `v`) and `EICRECON_VERSION_NO_V` (without `v`, used by spack).
 
-Use `gh` to tag and publish the release; let GitHub generate the release notes from merged PRs:
+Also record the branch the release will be tagged from as `EICRECON_BRANCH`:
+- **Minor** bump → the default branch `main`.
+- **Patch** bump → the existing stable branch `vX.Y` (e.g. `v1.39`).
 
-```bash
-gh release create <VERSION> \
-    --repo eic/EICrecon \
-    --title <VERSION> \
-    --generate-notes
-```
-
-Example:
-
-```bash
-gh release create v1.40.0 --repo eic/EICrecon --title v1.40.0 --generate-notes
-```
-
-### 4. Verify the generated release notes
-
-Inspect the published release notes:
-
-```bash
-gh release view <VERSION> --repo eic/EICrecon
-```
-
-Check that:
-- Notes are categorized (Tracking, Calorimetry, Infrastructure, etc.) via `.github/release.yml`.
-- The `Full Changelog` link compares against the correct previous tag (for a minor bump, this is the previous minor `X.Y.0`, not the last patch).
-- No obviously missing PRs or malformed entries.
-
-### 5. Prune bot noise from release notes
-
-Remove auto-generated bot entries (pre-commit.ci autoupdates, dependabot bumps) which are not user-facing:
-
-```bash
-gh release view <VERSION> --repo eic/EICrecon --json body -q .body > /tmp/notes.md
-grep -vE '^\* \[pre-commit\.ci\]|@dependabot' /tmp/notes.md > /tmp/notes.new.md
-diff /tmp/notes.md /tmp/notes.new.md   # review what will be removed
-gh release edit <VERSION> --repo eic/EICrecon --notes-file /tmp/notes.new.md
-```
-
-### 6. Determine latest release of eic/epic
+### 2. Determine the next epic (geometry) version
 
 ```bash
 gh release list --repo eic/epic --limit 10
@@ -91,20 +52,86 @@ Note: `eic/epic` uses **CalVer** (`YY.MM.patch`), not SemVer. Versioning rule:
 
 Example: on 2026-08-11, latest `26.07.2` → next version **`26.08.0`**.
 
-### 7. Create and clean the eic/epic release
+Record this as `EPIC_VERSION`.
 
-Same procedure as EICrecon (steps 3–5), just with `--repo eic/epic`:
+Also record the branch the release will be tagged from as `EPIC_BRANCH`:
+- **New month** (`.0`) → the default branch `main`.
+- **Patch** bump → the existing stable branch `YY.MM` (e.g. `26.07`).
 
-```bash
-gh release create <VERSION> --repo eic/epic --title <VERSION> --generate-notes
+### 3. Determine the software stack (containers) stable version
 
-gh release view <VERSION> --repo eic/epic --json body -q .body > /tmp/epic-notes.md
-grep -vE '^\* \[pre-commit\.ci\]|@dependabot' /tmp/epic-notes.md > /tmp/epic-notes.new.md
-diff /tmp/epic-notes.md /tmp/epic-notes.new.md
-gh release edit <VERSION> --repo eic/epic --notes-file /tmp/epic-notes.new.md
+The containers stable release follows CalVer with a `v` prefix and `-stable` suffix (see step 18):
+
+- Stable branch: `vYY.MM-stable` (e.g. `v26.08-stable`).
+- Release tag: `vYY.MM.0-stable` (e.g. `v26.08.0-stable`).
+
+The `YY.MM` normally matches the epic (geometry) release month. Record this as `STACK_VERSION` (e.g. `v26.08.0-stable`).
+
+### 4. Confirm versions with the user
+
+Present all three determined versions together and **stop for explicit user confirmation** before creating any release, branch, or PR:
+
+```
+Planned release versions (tagged from branch):
+- epic software stack (containers): <STACK_VERSION>
+- geometry (eic/epic):              <EPIC_VERSION>    from <EPIC_BRANCH>
+- EICrecon (eic/EICrecon):          <EICRECON_VERSION> from <EICRECON_BRANCH>
+
+Confirm you are okay releasing these versions from these branches before I proceed.
 ```
 
-### 8. Create stable branches and backport labels
+Do not create any release, branch, or PR until the user confirms. If the user wants different versions or branches, update the recorded values and re-confirm.
+
+### 5. Create the EICrecon release with auto-generated notes
+
+Use `gh` to tag and publish the release; let GitHub generate the release notes from merged PRs:
+
+```bash
+gh release create <EICRECON_VERSION> \
+    --repo eic/EICrecon \
+    --target <EICRECON_BRANCH> \
+    --title <EICRECON_VERSION> \
+    --generate-notes
+```
+
+### 6. Verify the generated release notes
+
+Inspect the published release notes:
+
+```bash
+gh release view <EICRECON_VERSION> --repo eic/EICrecon
+```
+
+Check that:
+- Notes are categorized (Tracking, Calorimetry, Infrastructure, etc.) via `.github/release.yml`.
+- The `Full Changelog` link compares against the correct previous tag (for a minor bump, this is the previous minor `X.Y.0`, not the last patch).
+- No obviously missing PRs or malformed entries.
+
+### 7. Prune bot noise from release notes
+
+Remove auto-generated bot entries (pre-commit.ci autoupdates, dependabot bumps) which are not user-facing:
+
+```bash
+gh release view <EICRECON_VERSION> --repo eic/EICrecon --json body -q .body > /tmp/notes.md
+grep -vE '^\* \[pre-commit\.ci\]|@dependabot' /tmp/notes.md > /tmp/notes.new.md
+diff /tmp/notes.md /tmp/notes.new.md   # review what will be removed
+gh release edit <EICRECON_VERSION> --repo eic/EICrecon --notes-file /tmp/notes.new.md
+```
+
+### 8. Create and clean the eic/epic release
+
+Same procedure as EICrecon (steps 5–7), just with `--repo eic/epic` and `<EPIC_VERSION>`:
+
+```bash
+gh release create <EPIC_VERSION> --repo eic/epic --target <EPIC_BRANCH> --title <EPIC_VERSION> --generate-notes
+
+gh release view <EPIC_VERSION> --repo eic/epic --json body -q .body > /tmp/epic-notes.md
+grep -vE '^\* \[pre-commit\.ci\]|@dependabot' /tmp/epic-notes.md > /tmp/epic-notes.new.md
+diff /tmp/epic-notes.md /tmp/epic-notes.new.md
+gh release edit <EPIC_VERSION> --repo eic/epic --notes-file /tmp/epic-notes.new.md
+```
+
+### 9. Create stable branches and backport labels
 
 Once both releases (EICrecon and epic) are published, create a stable branch pointing at each release tag, and a matching backport label in each repo.
 
@@ -116,7 +143,7 @@ Label naming: `backport <BRANCH>` with description `Backport into <BRANCH>` and 
 
 ```bash
 # EICrecon
-EICRECON_SHA=$(gh api repos/eic/EICrecon/commits/v<EICRECON_VERSION> -q .sha)
+EICRECON_SHA=$(gh api repos/eic/EICrecon/commits/<EICRECON_VERSION> -q .sha)
 gh api -X POST repos/eic/EICrecon/git/refs \
     -f ref=refs/heads/v<X.Y> -f sha=$EICRECON_SHA
 gh label create "backport v<X.Y>" --repo eic/EICrecon \
@@ -132,7 +159,7 @@ gh label create "backport <YY.MM>" --repo eic/epic \
 
 Note: `gh api repos/.../commits/<tag>` dereferences annotated tags to their target commit SHA, which is what a branch ref needs.
 
-### 9. Clone eic-spack to a temporary location
+### 10. Clone eic-spack to a temporary location
 
 ```bash
 TMPDIR=$(mktemp -d)
@@ -142,7 +169,7 @@ cd "$TMPDIR/eic-spack"
 
 Remember the path — subsequent steps will update package recipes in this checkout.
 
-### 10. Compute spack checksums for the new tarballs
+### 11. Compute spack checksums for the new tarballs
 
 Run `spack checksum` inside the `eicweb/eic_ci:nightly` container (Docker or Singularity/Apptainer). Note that **spack versions drop the leading `v`** from git tags: git tag `v1.40.0` → spack version `1.40.0`. The `epic` package already uses the plain CalVer string (`26.08.0`).
 
@@ -170,7 +197,7 @@ version("1.40.0", sha256="d5ac2bbe17093941f69e819aaa70987166a3ad838561319366da05
 
 Record both sha256 values — they will be added to the spack recipes next.
 
-### 11. Add version lines to spack recipes
+### 12. Add version lines to spack recipes
 
 Edit the two package recipes in the eic-spack checkout:
 
@@ -197,7 +224,7 @@ And (`eicrecon`, note no `v` prefix):
     ...
 ```
 
-### 12. Push a feature branch to eic/eic-spack and open a PR
+### 13. Push a feature branch to eic/eic-spack and open a PR
 
 Push **directly** to a feature branch on `eic/eic-spack` (do NOT use a personal fork). Do not run `gh repo fork` — it will silently create a fork you may not want.
 
@@ -217,14 +244,14 @@ gh pr create --repo eic/eic-spack \
 
 After the PR URL is printed, **stop and present it to the user for confirmation** (per Interaction policy) before proceeding.
 
-### 13. Clone eic/containers to a temporary location
+### 14. Clone eic/containers to a temporary location
 
 ```bash
 git clone git@github.com:eic/containers.git "$TMPDIR/containers"
 cd "$TMPDIR/containers"
 ```
 
-### 14. Bump EICSPACK_VERSION in eic-spack.sh
+### 15. Bump EICSPACK_VERSION in eic-spack.sh
 
 `eic-spack.sh` pins the `eic/eic-spack` commit consumed by the container build:
 
@@ -235,7 +262,7 @@ EICSPACK_VERSION="<sha>"
 
 Decide which SHA to write:
 
-- If the eic-spack PR from step 12 **is merged** → use its **merge commit** on `eic/eic-spack@main`.
+- If the eic-spack PR from step 13 **is merged** → use its **merge commit** on `eic/eic-spack@main`.
 - If the PR is **not yet merged** → temporarily point at the **PR head commit** (the tip of the feature branch on `eic/eic-spack`). This must be replaced with the merge commit before the containers PR is merged.
 
 Only bump if the new SHA is strictly newer than the currently pinned one; verify with:
@@ -259,7 +286,7 @@ Get the merge commit SHA for a merged PR with:
 gh pr view <PR> --repo eic/eic-spack --json mergeCommit -q .mergeCommit.oid
 ```
 
-### 15. Update EICrecon version in spack-environment/packages.yaml
+### 16. Update EICrecon version in spack-environment/packages.yaml
 
 In `spack-environment/packages.yaml`, locate the `eicrecon:` block and bump the pinned version (no `v` prefix, matching spack). The line is tagged with `# EICRECON_VERSION`:
 
@@ -274,7 +301,7 @@ sed -i "s|- '@<OLD>' # EICRECON_VERSION|- '@<NEW>' # EICRECON_VERSION|" \
     spack-environment/packages.yaml
 ```
 
-### 16. Update pinned epic versions in per-flavor spack.yaml files
+### 17. Update pinned epic versions in per-flavor spack.yaml files
 
 For each `spack-environment/*/epic/spack.yaml`:
 
@@ -297,7 +324,7 @@ Example before/after (adding `26.08.0`, dropping `26.04.*`):
 + - epic@26.08.0
 ```
 
-### 17. Push a feature branch to eic/containers and open a PR
+### 18. Push a feature branch to eic/containers and open a PR
 
 Same direct-branch pattern as the eic-spack PR (no personal fork):
 
@@ -341,13 +368,13 @@ Notable eic-spack commits picked up:
 - eic/eic-spack#1006 simphony: make the DD4hep plugins discoverable at runtime
 ```
 
-### 18. Cut the containers stable branch and release
+### 19. Cut the containers stable branch and release
 
-Once the containers PR is merged, cut the stable branch and tag+release from the **merge commit** (default branch on `eic/containers` is `master`).
+Once the containers PR is merged, cut the stable branch and tag+release from the **merge commit** (default branch on `eic/containers` is `master`). Use the `STACK_VERSION` confirmed in step 4.
 
 Naming (containers convention, note the leading `v` in both, unlike the `epic` repo):
 - Stable branch: `vYY.MM-stable` (e.g. `v26.08-stable`) — note the `v` prefix and the two-component `YY.MM`.
-- Release tag: `vYY.MM.0-stable` (e.g. `v26.08.0-stable`).
+- Release tag: `vYY.MM.0-stable` (e.g. `v26.08.0-stable`) — this is `STACK_VERSION`.
 
 ```bash
 SHA=$(gh pr view <PR> --repo eic/containers --json mergeCommit -q .mergeCommit.oid)
@@ -357,19 +384,18 @@ gh api -X POST repos/eic/containers/git/refs \
     -f ref=refs/heads/v<YY.MM>-stable -f sha=$SHA
 
 # Release
-gh release create v<YY.MM.0>-stable --repo eic/containers \
-    --target $SHA --title v<YY.MM.0>-stable --generate-notes
+gh release create <STACK_VERSION> --repo eic/containers \
+    --target $SHA --title <STACK_VERSION> --generate-notes
 ```
 
-Apply the same bot-noise pruning (step 5) to the release notes if needed.
+Apply the same bot-noise pruning (step 7) to the release notes if needed.
 
 Stop and present the release URL for user confirmation.
 
-### 19. Point the user at the container pipelines
+### 20. Point the user at the container pipelines
 
 After the stable release is published, the container image build runs on the internal GitLab mirror. Direct the user to monitor:
 
 https://eicweb.phy.anl.gov/containers/eic_container/-/pipelines
 
 This is the end of the automated portion of the release procedure.
-
