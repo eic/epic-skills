@@ -388,6 +388,10 @@ gh api -X POST repos/eic/containers/git/refs \
 # Release
 gh release create <STACK_VERSION> --repo eic/containers \
     --target $SHA --title <STACK_VERSION> --generate-notes
+
+# Backport label
+gh label create "backport v<YY.MM>-stable" --repo eic/containers \
+    --description "Backport into v<YY.MM>-stable" --color "0fafaa"
 ```
 
 Apply the same bot-noise pruning (step 7) to the release notes if needed.
